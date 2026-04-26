@@ -1,0 +1,51 @@
+pipeline {
+    agent any
+    stages {
+        stage('compile') {
+            steps {
+                echo 'Compiling...'
+                git changelog: false, poll: false, url: 'https://github.com/r0e7j6/DevopsProjectSampleJavaApp.git'
+                sh '/opt/maven/bin/mvn compile'
+            }
+        }
+        stage('Codereview-pmd') {
+            steps {
+                echo 'CodeReview....'
+                sh '/opt/maven/bin/mvn -P metrics pmd:pmd'
+            }
+            post {
+                success {
+                    recordIssues sourceCodeRetention: 'LAST_BUILD', tools: [pmdParser(pattern: '**/target/pmd.xml')]
+                }
+            }
+        }
+        stage('unit test') {
+            steps {
+                echo 'unit test...'
+                sh '/opt/maven/bin/mvn test'
+            }
+            post {
+                success {
+                    junit 'target/surefire-reports/*.xml'
+                }
+            }
+        }
+       stage('CodeCoverage') {
+            steps {
+                echo 'unittest...'
+                sh '/opt/maven/bin/mvn verify'
+            }
+            post {
+                success {
+                jacoco buildOverBuild: true, deltaBranchCoverage: '20', deltaClassCoverage: '20', deltaComplexityCoverage: '20', deltaInstructionCoverage: '20', deltaLineCoverage: '20', deltaMethodCoverage: '20'
+                }
+            }
+        }        
+        stage('Package') {
+            steps {
+                echo 'Package...'
+                sh '/opt/maven/bin/mvn package'
+            }
+        }
+    }
+}
